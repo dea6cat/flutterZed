@@ -59,6 +59,7 @@ pub enum IconName {
     Box,
     BoxOpen,
     CaseSensitive,
+    Cat,
     Chat,
     Check,
     CheckDouble,
