@@ -221,6 +221,11 @@ pub struct AgentSettingsContent {
     ///
     /// Default: true
     pub enabled: Option<bool>,
+    /// Whether Zed's built-in agent is available. When false, only external agents
+    /// (such as Clyde) are offered in the agent panel.
+    ///
+    /// Default: false
+    pub native_agent: Option<bool>,
     /// Whether to show the agent panel button in the status bar.
     ///
     /// Default: true

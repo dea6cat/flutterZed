@@ -1563,7 +1563,7 @@ impl AgentPanel {
             pending_serialization: None,
             new_user_onboarding: onboarding,
             thread_store,
-            selected_agent: Agent::default(),
+            selected_agent: default_agent(cx),
             _thread_view_subscription: None,
             _active_thread_focus_subscription: None,
             new_user_onboarding_upsell_dismissed: AtomicBool::new(OnboardingUpsell::dismissed(cx)),
@@ -1636,6 +1636,8 @@ impl AgentPanel {
     pub fn selected_agent(&self, cx: &App) -> Agent {
         if self.project.read(cx).is_via_collab() {
             Agent::NativeAgent
+        } else if self.selected_agent == Agent::NativeAgent {
+            default_agent(cx)
         } else {
             self.selected_agent.clone()
         }
@@ -1656,7 +1658,7 @@ impl AgentPanel {
         if self.should_restore_agent(&agent, cx) {
             agent
         } else {
-            Agent::NativeAgent
+            default_agent(cx)
         }
     }
 
@@ -5920,8 +5922,9 @@ impl AgentPanel {
 
             Rc::new(move |window, cx| {
                 Some(ContextMenu::build(window, cx, |menu, _window, cx| {
+                    let native_agent = AgentSettings::get_global(cx).native_agent;
                     menu.context(focus_handle.clone())
-                        .item(
+                        .when(native_agent, |menu| menu.item(
                             ContextMenuEntry::new("Zed Agent")
                                 .when(
                                     !showing_terminal && is_agent_selected(Agent::NativeAgent),
@@ -5951,7 +5954,7 @@ impl AgentPanel {
                                         }
                                     }
                                 }),
-                        )
+                        ))
                         .when(supports_terminal, |menu| {
                             menu.item(
                                 ContextMenuEntry::new("Terminal")
@@ -6050,6 +6053,12 @@ impl AgentPanel {
                                         move |window, cx| {
                                             if let Some(workspace) = workspace.upgrade() {
                                                 workspace.update(cx, |workspace, cx| {
+                                                    if agent_id.0.as_ref() == CLYDE_AGENT_ID
+                                                        && !clyde_installed()
+                                                    {
+                                                        offer_clyde_install(window, cx);
+                                                        return;
+                                                    }
                                                     if let Some(panel) =
                                                         workspace.panel::<AgentPanel>(cx)
                                                     {
@@ -14767,4 +14776,69 @@ mod tests {
             );
         });
     }
+}
+
+const CLYDE_AGENT_ID: &str = "clyde";
+const CLYDE_INSTALL_COMMAND: &str =
+    "curl -fsSL https://raw.githubusercontent.com/dea6cat/ClydeCLI/main/install.sh | sh";
+
+/// The agent selected when none is chosen yet: Zed's own agent only when enabled in settings.
+fn default_agent(cx: &App) -> Agent {
+    if AgentSettings::get_global(cx).native_agent {
+        Agent::NativeAgent
+    } else {
+        Agent::Custom {
+            id: AgentId::new(CLYDE_AGENT_ID),
+        }
+    }
+}
+
+/// Whether the `clyde` executable is on `PATH` or in uv's tool directory (`~/.local/bin`).
+fn clyde_installed() -> bool {
+    let local_bin = std::env::var_os("HOME")
+        .map(|home| std::path::PathBuf::from(home).join(".local/bin"));
+    std::env::var_os("PATH")
+        .map(|path| std::env::split_paths(&path).collect::<Vec<_>>())
+        .unwrap_or_default()
+        .into_iter()
+        .chain(local_bin)
+        .any(|directory| directory.join("clyde").is_file())
+}
+
+/// Asks before running the ClydeCLI installer in a terminal.
+fn offer_clyde_install(window: &mut Window, cx: &mut Context<Workspace>) {
+    let answer = window.prompt(
+        gpui::PromptLevel::Info,
+        "Install Clyde?",
+        Some(&format!(
+            "Clyde is not installed. This runs the official installer in a terminal:\n\n{CLYDE_INSTALL_COMMAND}\n\nTap Clyde again when it finishes."
+        )),
+        &["Install", "Cancel"],
+        cx,
+    );
+    cx.spawn_in(window, async move |workspace, cx| {
+        if answer.await.ok() != Some(0) {
+            return;
+        }
+        workspace
+            .update_in(cx, |workspace, window, cx| {
+                workspace
+                    .spawn_in_terminal(
+                        task::SpawnInTerminal {
+                            id: task::TaskId("install-clyde".to_string()),
+                            full_label: "Install Clyde".to_string(),
+                            label: "Install Clyde".to_string(),
+                            command: Some(CLYDE_INSTALL_COMMAND.to_string()),
+                            command_label: CLYDE_INSTALL_COMMAND.to_string(),
+                            use_new_terminal: true,
+                            ..Default::default()
+                        },
+                        window,
+                        cx,
+                    )
+                    .detach();
+            })
+            .log_err();
+    })
+    .detach();
 }
