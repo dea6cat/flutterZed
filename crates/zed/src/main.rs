@@ -20,18 +20,18 @@ use anyhow::{Context as _, Result};
 use clap::Parser;
 use cli::FORCE_CLI_MODE_ENV_VAR_NAME;
 use client::{Client, ProxySettings, RefreshLlmTokenListener, UserStore, parse_zed_link};
-use collab_ui::channel_view::ChannelView;
 use collections::HashMap;
 use crashes::InitCrashHandler;
 use db::kvp::{GlobalKeyValueStore, KeyValueStore};
 use editor::Editor;
 use extension::ExtensionHostProxy;
 use fs::{Fs, RealFs};
-use futures::{FutureExt, StreamExt, channel::oneshot, future};
+use futures::{FutureExt, StreamExt, channel::oneshot};
 use git::GitHostingProviderRegistry;
 use git_ui::clone::clone_and_open;
 use gpui::{
-    App, AppContext, Application, AsyncApp, QuitMode, Task, TaskExt, UpdateGlobal as _, block_on,
+    App, AppContext, Application, AssetSource as _, AsyncApp, QuitMode, Task, TaskExt,
+    UpdateGlobal as _, block_on,
 };
 use gpui_platform;
 
@@ -64,12 +64,12 @@ use std::{
 };
 use theme::{ActiveTheme, GlobalTheme, ThemeRegistry};
 use theme_settings::load_user_theme;
-use util::{ResultExt, maybe};
+use util::ResultExt;
 use uuid::Uuid;
 use workspace::{
     AppState, MultiWorkspace, SerializedWorkspaceLocation, SessionWorkspace, Toast,
     WorkspaceSettings, WorkspaceStore,
-    notifications::{NotificationId, NotifyResultExt},
+    notifications::NotificationId,
     restore_multiworkspace,
 };
 use zed::{
@@ -659,6 +659,7 @@ fn main() {
         dap_adapters::init(cx);
         auto_update_ui::init(cx);
         reliability::init(client.clone(), app_state.workspace_store.clone(), cx);
+        install_bundled_extensions();
         extension_host::init(
             extension_host_proxy.clone(),
             app_state.fs.clone(),
@@ -770,9 +771,7 @@ fn main() {
         theme_selector::init(cx);
         settings_profile_selector::init(cx);
         language_tools::init(cx);
-        call::init(app_state.client.clone(), app_state.user_store.clone(), cx);
         notifications::init(app_state.client.clone(), app_state.user_store.clone(), cx);
-        collab_ui::init(&app_state, cx);
         git_ui::init(cx);
         feedback::init(cx);
         markdown_preview::init(cx);
@@ -1305,60 +1304,7 @@ fn handle_open_request(request: OpenRequest, app_state: Arc<AppState>, cx: &mut 
         }));
     }
 
-    if !request.open_channel_notes.is_empty() || request.join_channel.is_some() {
-        cx.spawn(async move |cx| {
-            let result = maybe!(async {
-                if let Some(task) = task {
-                    task.await?;
-                }
-                let client = app_state.client.clone();
-                // we continue even if connection fails as join_channel/ open channel notes will
-                // show a visible error message.
-                client.connect(true, cx).await.into_response().log_err();
-
-                if let Some(channel_id) = request.join_channel {
-                    cx.update(|cx| {
-                        workspace::join_channel(
-                            client::ChannelId(channel_id),
-                            app_state.clone(),
-                            None,
-                            None,
-                            cx,
-                        )
-                    })
-                    .await?;
-                }
-
-                let workspace_window =
-                    workspace::get_any_active_multi_workspace(app_state, cx.clone()).await?;
-
-                let workspace = workspace_window.read_with(cx, |mw, _| mw.workspace().clone())?;
-                let weak_workspace = workspace.downgrade();
-
-                let mut promises = Vec::new();
-                for (channel_id, heading) in request.open_channel_notes {
-                    promises.push(cx.update_window(workspace_window.into(), |_, window, cx| {
-                        ChannelView::open(
-                            client::ChannelId(channel_id),
-                            heading,
-                            workspace.clone(),
-                            window,
-                            cx,
-                        )
-                    })?)
-                }
-                for result in future::join_all(promises).await {
-                    result.notify_workspace_async_err(weak_workspace.clone(), cx);
-                }
-                anyhow::Ok(())
-            })
-            .await;
-            if let Err(err) = result {
-                fail_to_open_window_async(err, cx);
-            }
-        })
-        .detach()
-    } else if let Some(task) = task {
+    if let Some(task) = task {
         cx.spawn(async move |cx| {
             if let Err(err) = task.await {
                 fail_to_open_window_async(err, cx);
@@ -2070,5 +2016,41 @@ fn check_for_conpty_dll() {
         }
     } else {
         log::warn!("Failed to load conpty.dll. Terminal will work with reduced functionality.");
+    }
+}
+
+/// Copies extensions embedded under `assets/bundled_extensions` into the extensions
+/// directory. Dev-linked (symlinked) extensions of the same name are left alone.
+fn install_bundled_extensions() {
+    let installed_dir = paths::extensions_dir().join("installed");
+    let mut changed = false;
+    for asset in Assets.list("bundled_extensions/").unwrap_or_default() {
+        let Some(relative) = asset.strip_prefix("bundled_extensions/") else {
+            continue;
+        };
+        let Some((name, _)) = relative.split_once('/') else {
+            continue;
+        };
+        if installed_dir.join(name).is_symlink() {
+            continue;
+        }
+        let Some(data) = Assets.load(&asset).log_err().flatten() else {
+            continue;
+        };
+        let target = installed_dir.join(relative);
+        if std::fs::read(&target).is_ok_and(|existing| existing == data.as_ref()) {
+            continue;
+        }
+        if let Some(parent) = target.parent() {
+            std::fs::create_dir_all(parent).log_err();
+        }
+        changed |= std::fs::write(&target, data.as_ref()).log_err().is_some();
+    }
+    if changed {
+        // The extension index is rebuilt when the installed directory's mtime is newer than
+        // the index; creating and removing a marker file bumps it for in-place updates.
+        let marker = installed_dir.join(".bundled_extensions_updated");
+        std::fs::write(&marker, b"").log_err();
+        std::fs::remove_file(&marker).log_err();
     }
 }

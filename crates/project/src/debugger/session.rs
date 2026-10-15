@@ -3,7 +3,7 @@ use super::breakpoint_store::{
 };
 use super::dap_command::{
     self, Attach, ConfigurationDone, ContinueCommand, DataBreakpointInfoCommand, DisconnectCommand,
-    EvaluateCommand, Initialize, Launch, LoadedSourcesCommand, LocalDapCommand, LocationsCommand,
+    EvaluateCommand, HotReloadCommand, HotRestartCommand, Initialize, Launch, LoadedSourcesCommand, LocalDapCommand, LocationsCommand,
     ModulesCommand, NextCommand, PauseCommand, RestartCommand, RestartStackFrameCommand,
     ScopesCommand, SetDataBreakpointsCommand, SetExceptionBreakpoints, SetVariableValueCommand,
     StackTraceCommand, StepBackCommand, StepCommand, StepInCommand, StepOutCommand,
@@ -2211,6 +2211,28 @@ impl Session {
             cx,
         )
         .detach();
+    }
+
+    /// Finds the Flutter DevTools URL that `flutter run` printed to the debug console.
+    pub fn flutter_devtools_url(&self) -> Option<String> {
+        self.output.iter().rev().find_map(|event| {
+            let line = event.output.lines().find(|line| line.contains("DevTools"))?;
+            let start = line.find("http")?;
+            let url = line[start..].split_whitespace().next()?;
+            Some(url.to_string())
+        })
+    }
+
+    /// Hot reloads a Flutter app through the Dart debug adapter's custom `hotReload` request.
+    pub fn hot_reload(&mut self, cx: &mut Context<Self>) {
+        self.request(HotReloadCommand, Self::empty_response, cx)
+            .detach();
+    }
+
+    /// Hot restarts a Flutter app through the Dart debug adapter's custom `hotRestart` request.
+    pub fn hot_restart(&mut self, cx: &mut Context<Self>) {
+        self.request(HotRestartCommand, Self::empty_response, cx)
+            .detach();
     }
 
     pub fn restart(&mut self, args: Option<Value>, cx: &mut Context<Self>) {

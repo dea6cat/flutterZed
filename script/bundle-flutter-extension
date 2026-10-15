@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Copies the prebuilt Flutter extension (zed-flutter dev build) into assets/bundled_extensions/flutter.
+set -euo pipefail
+src="${1:?usage: bundle-flutter-extension <built extension dir, e.g. the dev-installed extensions/flutter after building in Zed>}"
+dest="$(dirname "$0")/../assets/bundled_extensions/flutter"
+mkdir -p "$dest/grammars"
+cp "$src/extension.toml" "$src/extension.wasm" "$src/LICENSE" "$dest/"
+cp "$src/grammars/dart.wasm" "$dest/grammars/"
+cp -R "$src/languages" "$src/snippets" "$src/debug_adapter_schemas" "$src/tool" "$dest/"

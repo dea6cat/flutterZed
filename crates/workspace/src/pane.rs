@@ -4633,6 +4633,8 @@ impl Render for Pane {
                                 ));
                             if has_worktrees || !self.should_display_welcome_page {
                                 placeholder
+                                    .items_center()
+                                    .child(empty_pane_watermark())
                             } else {
                                 if self.welcome_page.is_none() {
                                     let workspace = self.workspace.clone();
@@ -9664,4 +9666,12 @@ mod tests {
             }
         }
     }
+}
+
+fn empty_pane_watermark() -> impl IntoElement {
+    gpui::div().opacity(0.2).child(
+        Icon::new(IconName::Cat)
+            .size(IconSize::Custom(ui::rems_from_px(172.0)))
+            .color(Color::Muted),
+    )
 }

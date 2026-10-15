@@ -82,7 +82,7 @@ use smallvec::SmallVec;
 use std::cell::Cell;
 use std::future::Future;
 use std::ops::Range;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::{sync::Arc, time::Duration};
 use strum::{IntoEnumIterator, VariantNames};
@@ -4278,6 +4278,13 @@ impl GitPanel {
         }
 
         let registry = LanguageModelRegistry::read_global(cx);
+        let model_unusable = registry
+            .configuration_error(registry.commit_message_model(cx), cx)
+            .is_some();
+        if model_unusable && let Some(clyde) = agent_settings::clyde_executable() {
+            self.generate_commit_message_with_clyde(clyde, cx);
+            return;
+        }
         let Some(model) = registry.commit_message_model(cx) else {
             return;
         };
@@ -4331,7 +4338,7 @@ impl GitPanel {
                     task.await.log_err();
                 }
 
-                let mut diff_text = match diff.await {
+                let diff_text = match diff.await {
                     Ok(result) => match result {
                         Ok(text) => text,
                         Err(e) => {
@@ -4345,45 +4352,16 @@ impl GitPanel {
                     }
                 };
 
-                const MAX_DIFF_BYTES: usize = 20_000;
-                diff_text = Self::compress_commit_diff(&diff_text, MAX_DIFF_BYTES);
-
-                let rules_content = if include_project_rules {
-                    Self::load_project_rules(&project, &repo_work_dir, &mut cx).await
-                } else {
-                    None
-                };
-                let user_agents_md = if include_project_rules {
-                    cx.update(|cx| {
-                        UserAgentsMd::global(cx)
-                            .and_then(|user_agents_md| user_agents_md.content().cloned())
-                    })
-                } else {
-                    None
-                };
-
-                let prompt = include_str!("../src/commit_message_prompt.txt");
-
-                let subject = this.update(cx, |this, cx| {
-                    this.commit_editor
-                        .read(cx)
-                        .text(cx)
-                        .lines()
-                        .next()
-                        .map(ToOwned::to_owned)
-                        .unwrap_or_default()
-                })?;
-
-                let text_empty = subject.trim().is_empty();
-
-                let content = Self::build_commit_message_prompt(
-                    &prompt,
-                    user_agents_md.as_deref(),
-                    rules_content.as_deref(),
-                    instructions.as_deref(),
-                    &subject,
+                let (content, text_empty) = Self::commit_message_prompt(
+                    &this,
                     &diff_text,
-                );
+                    &project,
+                    &repo_work_dir,
+                    include_project_rules,
+                    instructions.as_deref(),
+                    cx,
+                )
+                .await?;
 
                 let request = LanguageModelRequest {
                     thread_id: None,
@@ -6141,6 +6119,143 @@ impl GitPanel {
             .detach_and_log_err(cx);
     }
 
+    async fn commit_message_prompt(
+        this: &WeakEntity<Self>,
+        diff_text: &str,
+        project: &Entity<Project>,
+        repo_work_dir: &Arc<Path>,
+        include_project_rules: bool,
+        instructions: Option<&str>,
+        cx: &mut AsyncApp,
+    ) -> anyhow::Result<(String, bool)> {
+        const MAX_DIFF_BYTES: usize = 20_000;
+        let diff_text = Self::compress_commit_diff(diff_text, MAX_DIFF_BYTES);
+
+        let rules_content = if include_project_rules {
+            Self::load_project_rules(project, repo_work_dir, cx).await
+        } else {
+            None
+        };
+        let user_agents_md = if include_project_rules {
+            cx.update(|cx| {
+                UserAgentsMd::global(cx).and_then(|user_agents_md| user_agents_md.content().cloned())
+            })
+        } else {
+            None
+        };
+
+        let prompt = include_str!("../src/commit_message_prompt.txt");
+
+        let subject = this.update(cx, |this, cx| {
+            this.commit_editor
+                .read(cx)
+                .text(cx)
+                .lines()
+                .next()
+                .map(ToOwned::to_owned)
+                .unwrap_or_default()
+        })?;
+        let text_empty = subject.trim().is_empty();
+
+        let content = Self::build_commit_message_prompt(
+            prompt,
+            user_agents_md.as_deref(),
+            rules_content.as_deref(),
+            instructions,
+            &subject,
+            &diff_text,
+        );
+        Ok((content, text_empty))
+    }
+
+    /// Writes the commit message with Clyde in headless mode when no language model provider is set up.
+    fn generate_commit_message_with_clyde(&mut self, clyde: PathBuf, cx: &mut Context<Self>) {
+        let Some(repo) = self.active_repository.as_ref() else {
+            return;
+        };
+        let diff = repo.update(cx, |repo, cx| {
+            if self.has_staged_changes() {
+                repo.diff(DiffType::HeadToIndex, cx)
+            } else {
+                repo.diff(DiffType::HeadToWorktree, cx)
+            }
+        });
+        let include_project_rules =
+            AgentSettings::get_global(cx).commit_message_include_project_rules;
+        let instructions = AgentSettings::get_global(cx)
+            .commit_message_instructions
+            .clone();
+        let project = self.project.clone();
+        let repo_work_dir = repo.read(cx).work_directory_abs_path.clone();
+
+        self.generate_commit_message_task = Some(cx.spawn(async move |this, mut cx| {
+            async move {
+                let _defer = cx.on_drop(&this, |this, _cx| {
+                    this.generate_commit_message_task.take();
+                });
+
+                let diff_text = match diff.await {
+                    Ok(Ok(text)) => text,
+                    Ok(Err(error)) => {
+                        Self::show_commit_message_error(&this, &error, cx);
+                        return anyhow::Ok(());
+                    }
+                    Err(error) => {
+                        Self::show_commit_message_error(&this, &error, cx);
+                        return anyhow::Ok(());
+                    }
+                };
+                let (content, text_empty) = Self::commit_message_prompt(
+                    &this,
+                    &diff_text,
+                    &project,
+                    &repo_work_dir,
+                    include_project_rules,
+                    instructions.as_deref(),
+                    cx,
+                )
+                .await?;
+
+                let output = util::command::new_command(&clyde)
+                    .arg("-p")
+                    .arg(&content)
+                    .args(["--output-format", "text", "--max-turns", "1"])
+                    .current_dir(repo_work_dir.as_ref())
+                    .output()
+                    .await;
+                let message = match output {
+                    Ok(output) if output.status.success() => {
+                        String::from_utf8_lossy(&output.stdout).trim().to_string()
+                    }
+                    Ok(output) => {
+                        let error = String::from_utf8_lossy(&output.stderr).trim().to_string();
+                        Self::show_commit_message_error(&this, &format!("clyde: {error}"), cx);
+                        return anyhow::Ok(());
+                    }
+                    Err(error) => {
+                        Self::show_commit_message_error(&this, &error, cx);
+                        return anyhow::Ok(());
+                    }
+                };
+
+                this.update(cx, |this, cx| {
+                    this.commit_message_buffer(cx).update(cx, |buffer, cx| {
+                        let insert_position = buffer.anchor_before(buffer.len());
+                        let text = if text_empty {
+                            message
+                        } else {
+                            format!("\n{message}")
+                        };
+                        buffer.edit([(insert_position..insert_position, text)], None, cx);
+                    });
+                })?;
+                anyhow::Ok(())
+            }
+            .log_err()
+            .await
+        }));
+    }
+
     fn show_commit_message_error<E>(weak_this: &WeakEntity<Self>, err: &E, cx: &mut AsyncApp)
     where
         E: std::fmt::Debug + std::fmt::Display,
@@ -6338,7 +6453,8 @@ impl GitPanel {
         let model_registry = LanguageModelRegistry::read_global(cx);
         let has_commit_model_configuration_error = model_registry
             .configuration_error(model_registry.commit_message_model(cx), cx)
-            .is_some();
+            .is_some()
+            && agent_settings::clyde_executable().is_none();
         let can_commit = self.can_commit();
 
         let editor_focus_handle = self.commit_editor.focus_handle(cx);

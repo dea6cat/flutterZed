@@ -210,6 +210,7 @@ fn parse_auto_compact_threshold(raw: &str) -> anyhow::Result<AutoCompactThreshol
 #[derive(Clone, Debug, RegisterSetting)]
 pub struct AgentSettings {
     pub enabled: bool,
+    pub native_agent: bool,
     pub button: bool,
     pub dock: DockPosition,
     pub flexible: bool,
@@ -772,6 +773,7 @@ impl Settings for AgentSettings {
         let threads_sidebar = agent.threads_sidebar.unwrap();
         Self {
             enabled: agent.enabled.unwrap(),
+            native_agent: agent.native_agent.unwrap(),
             button: agent.button.unwrap(),
             dock: agent.dock.unwrap(),
             max_idle_retained_threads: agent.max_idle_retained_threads.unwrap(),
@@ -2262,4 +2264,17 @@ mod tests {
             assert_eq!(user_layout.project_panel_dock, Some(DockSide::Right));
         });
     }
+}
+
+/// Finds the `clyde` executable on `PATH` or in uv's tool directory (`~/.local/bin`).
+pub fn clyde_executable() -> Option<std::path::PathBuf> {
+    let local_bin = std::env::var_os("HOME")
+        .map(|home| std::path::PathBuf::from(home).join(".local/bin"));
+    std::env::var_os("PATH")
+        .map(|path| std::env::split_paths(&path).collect::<Vec<_>>())
+        .unwrap_or_default()
+        .into_iter()
+        .chain(local_bin)
+        .map(|directory| directory.join("clyde"))
+        .find(|candidate| candidate.is_file())
 }

@@ -21,10 +21,8 @@ members = [
     "crates/aws_http_client",
     "crates/bedrock",
     "crates/bench_metrics",
-    "crates/benchmarks",
     "crates/breadcrumbs",
     "crates/buffer_diff",
-    "crates/call",
     "crates/call_hierarchy",
     "crates/channel",
     "crates/cli",
@@ -34,8 +32,6 @@ members = [
     "crates/cloud_api_types",
     "crates/cloud_llm_client",
     "crates/codestral",
-    "crates/collab",
-    "crates/collab_ui",
     "crates/collections",
     "crates/command_palette",
     "crates/command_palette_hooks",
@@ -55,19 +51,15 @@ members = [
     "crates/deepseek",
     "crates/dev_container",
     "crates/diagnostics",
-    "crates/docs_preprocessor",
     "crates/edit_prediction",
-    "crates/edit_prediction_cli",
     "crates/edit_prediction_context",
     "crates/edit_prediction_metrics",
     "crates/edit_prediction_types",
     "crates/edit_prediction_ui",
     "crates/editor",
-    "crates/editor_benchmarks",
     "crates/encoding_selector",
     "crates/env_var",
     "crates/etw_tracing",
-    "crates/eval_cli",
     "crates/eval_utils",
     "crates/explorer_command_injector",
     "crates/extension",
@@ -83,7 +75,6 @@ members = [
     "crates/file_finder",
     "crates/file_icons",
     "crates/fs",
-    "crates/fs_benchmarks",
     "crates/fuzzy",
     "crates/fuzzy_nucleo",
     "crates/git",
@@ -132,8 +123,6 @@ members = [
     "crates/language_tools",
     "crates/languages",
     "crates/line_ending_selector",
-    "crates/livekit_api",
-    "crates/livekit_client",
     "crates/llama_cpp",
     "crates/lmstudio",
     "crates/lsp",
@@ -167,7 +156,6 @@ members = [
     "crates/platform_title_bar",
     "crates/prettier",
     "crates/project",
-    "crates/project_benchmarks",
     "crates/project_panel",
     "crates/project_symbols",
     "crates/prompt_store",
@@ -186,7 +174,6 @@ members = [
     "crates/rpc",
     "crates/sandbox",
     "crates/scheduler",
-    "crates/schema_generator",
     "crates/search",
     "crates/session",
     "crates/settings",
@@ -218,7 +205,6 @@ members = [
     "crates/text",
     "crates/theme",
     "crates/theme_extension",
-    "crates/theme_importer",
     "crates/theme_selector",
     "crates/theme_settings",
     "crates/time_format",
@@ -239,7 +225,6 @@ members = [
     "crates/windows_resources",
     "crates/workspace",
     "crates/worktree",
-    "crates/worktree_benchmarks",
     "crates/x_ai",
     "crates/x_ai_subscribed",
     "crates/zed",
@@ -302,7 +287,6 @@ aws_http_client = { path = "crates/aws_http_client" }
 bedrock = { path = "crates/bedrock" }
 breadcrumbs = { path = "crates/breadcrumbs" }
 buffer_diff = { path = "crates/buffer_diff" }
-call = { path = "crates/call" }
 call_hierarchy = { path = "crates/call_hierarchy" }
 channel = { path = "crates/channel" }
 cli = { path = "crates/cli", default-features = false }
@@ -312,8 +296,6 @@ cloud_api_client = { path = "crates/cloud_api_client" }
 cloud_api_types = { path = "crates/cloud_api_types" }
 cloud_llm_client = { path = "crates/cloud_llm_client" }
 codestral = { path = "crates/codestral" }
-collab = { path = "crates/collab" }
-collab_ui = { path = "crates/collab_ui" }
 collections = { path = "crates/collections", version = "0.1.0" }
 command_palette = { path = "crates/command_palette" }
 command_palette_hooks = { path = "crates/command_palette_hooks" }
@@ -405,8 +387,6 @@ language_selector = { path = "crates/language_selector" }
 language_tools = { path = "crates/language_tools" }
 languages = { path = "crates/languages" }
 line_ending_selector = { path = "crates/line_ending_selector" }
-livekit_api = { path = "crates/livekit_api" }
-livekit_client = { path = "crates/livekit_client" }
 llama_cpp = { path = "crates/llama_cpp" }
 lmstudio = { path = "crates/lmstudio" }
 lsp = { path = "crates/lsp" }
@@ -682,9 +662,7 @@ jupyter-protocol = "1.4.0"
 jupyter-websocket-client = "1.1.0"
 libc = "0.2"
 libsqlite3-sys = { version = "0.30.1", features = ["bundled"] }
-libwebrtc = "0.3.26"
 linkify = "0.10.0"
-livekit = { version = "0.7.32", features = ["tokio", "rustls-tls-native-roots"] }
 log = { version = "0.4", default-features = false, features = ["std"] }
 lru = "0.16"
 lsp-types = { git = "https://github.com/zed-industries/lsp-types", rev = "f1783e63a7f4eb4397bf51d4148b4895a1f7ab16" }
@@ -980,7 +958,6 @@ wax = { version = "0.7", default-features = false }
 web-sys = "0.3"
 web-time = "1.1.0"
 webpki-roots = "1.0.8"
-webrtc-sys = "0.3.23"
 # 30.0.1 lacks the Vulkan surface-drop panic fix: https://github.com/gfx-rs/wgpu/pull/10230.
 wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "3b3506ea31154edc04de64debda0e780cba2639c", default-features = false }
 which = "8"
@@ -1022,11 +999,8 @@ async-process = { git = "https://github.com/zed-industries/async-process.git", r
 async-task = { git = "https://github.com/zed-industries/async-task.git", rev = "015845a19fc31752c02367567d3b8900a406f9da" }
 windows-capture = { git = "https://github.com/zed-industries/windows-capture.git", rev = "f0d6c1b6691db75461b732f6d5ff56eed002eeb9" }
 calloop = { git = "https://github.com/zed-industries/calloop", rev = "3759371fee14c40066d64777e2a36b6ffcc22590" }
-livekit = { git = "https://github.com/zed-industries/livekit-rust-sdks", rev = "0a1c519cfce9b365229026b55de9b9dbdb6fed3c" }
-libwebrtc = { git = "https://github.com/zed-industries/livekit-rust-sdks", rev = "0a1c519cfce9b365229026b55de9b9dbdb6fed3c" }
 notify = { git = "https://github.com/zed-industries/notify", rev = "d842f16b2716bd60f09caf3ae3a894237ab38f54" }
 notify-types = { git = "https://github.com/zed-industries/notify", rev = "d842f16b2716bd60f09caf3ae3a894237ab38f54" }
-webrtc-sys = { git = "https://github.com/zed-industries/livekit-rust-sdks", rev = "0a1c519cfce9b365229026b55de9b9dbdb6fed3c" }
 # Avoid panicking when a failed EGL call reports EGL_SUCCESS.
 # https://github.com/timothee-haudebourg/khronos-egl/pull/37
 khronos-egl = { git = "https://github.com/zed-industries/khronos-egl", rev = "42214b36347b108fd9630ca6254b96dde59e04fe" }
