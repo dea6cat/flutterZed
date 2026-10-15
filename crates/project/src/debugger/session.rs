@@ -3,7 +3,7 @@ use super::breakpoint_store::{
 };
 use super::dap_command::{
     self, Attach, ConfigurationDone, ContinueCommand, DataBreakpointInfoCommand, DisconnectCommand,
-    EvaluateCommand, Initialize, Launch, LoadedSourcesCommand, LocalDapCommand, LocationsCommand,
+    EvaluateCommand, HotReloadCommand, HotRestartCommand, Initialize, Launch, LoadedSourcesCommand, LocalDapCommand, LocationsCommand,
     ModulesCommand, NextCommand, PauseCommand, RestartCommand, RestartStackFrameCommand,
     ScopesCommand, SetDataBreakpointsCommand, SetExceptionBreakpoints, SetVariableValueCommand,
     StackTraceCommand, StepBackCommand, StepCommand, StepInCommand, StepOutCommand,
@@ -2211,6 +2211,18 @@ impl Session {
             cx,
         )
         .detach();
+    }
+
+    /// Hot reloads a Flutter app through the Dart debug adapter's custom `hotReload` request.
+    pub fn hot_reload(&mut self, cx: &mut Context<Self>) {
+        self.request(HotReloadCommand, Self::empty_response, cx)
+            .detach();
+    }
+
+    /// Hot restarts a Flutter app through the Dart debug adapter's custom `hotRestart` request.
+    pub fn hot_restart(&mut self, cx: &mut Context<Self>) {
+        self.request(HotRestartCommand, Self::empty_response, cx)
+            .detach();
     }
 
     pub fn restart(&mut self, args: Option<Value>, cx: &mut Context<Self>) {

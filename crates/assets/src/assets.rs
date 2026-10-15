@@ -12,6 +12,7 @@ util::fs_embed! {
     crate_relative = "../../assets",
     root_relative = "assets",
     include = [
+        "bundled_extensions/**/*",
         "fonts/**/*",
         "icons/**/*",
         "images/**/*",

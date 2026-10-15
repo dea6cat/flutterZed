@@ -880,6 +880,40 @@ impl DebugPanel {
                                                 }
                                             }),
                                     )
+                                    .when(
+                                        running_state
+                                            .read(cx)
+                                            .session()
+                                            .read(cx)
+                                            .adapter()
+                                            .0
+                                            .as_ref()
+                                            == "Dart",
+                                        |this| {
+                                            this.child(
+                                                IconButton::new("debug-hot-reload", IconName::BoltFilled)
+                                                    .icon_size(IconSize::Small)
+                                                    .on_click(window.listener_for(
+                                                        running_state,
+                                                        |this, _, _window, cx| {
+                                                            this.hot_reload(cx);
+                                                        },
+                                                    ))
+                                                    .tooltip(Tooltip::text("Hot Reload")),
+                                            )
+                                            .child(
+                                                IconButton::new("debug-hot-restart", IconName::ArrowCircle)
+                                                    .icon_size(IconSize::Small)
+                                                    .on_click(window.listener_for(
+                                                        running_state,
+                                                        |this, _, _window, cx| {
+                                                            this.hot_restart(cx);
+                                                        },
+                                                    ))
+                                                    .tooltip(Tooltip::text("Hot Restart")),
+                                            )
+                                        },
+                                    )
                                     .child(
                                         IconButton::new("debug-stop", IconName::Power)
                                             .icon_size(IconSize::Small)

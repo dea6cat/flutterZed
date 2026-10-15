@@ -696,12 +696,19 @@
     "context": "Workspace",
     "use_key_equivalents": true,
     "bindings": {
+      // Flutter (bundled extension)
+      "f5": ["task::Spawn", { "task_name": "Flutter: hot reload" }],
+      "ctrl-f u": ["task::Spawn", { "task_name": "Flutter: run" }],
+      "ctrl-f d": ["task::Spawn", { "task_name": "Flutter: select device" }],
+      "ctrl-f i": ["task::Spawn", { "task_name": "Flutter: current device" }],
+      "ctrl-f w": ["task::Spawn", { "task_name": "Flutter: watch run configs" }],
+      "ctrl-f s": ["task::Spawn", { "task_name": "Flutter: sync run configs (.vscode/.run → .zed/debug.json)" }],
       "alt-/": "which_key::ShowPendingBindings",
       // Move focus between the major regions of the window (editor, open
       // panels, status bar). Accessibility navigation; mirrors VS Code's
       // "Focus Next/Previous Part". `cmd-f6` mirrors `f6` so region navigation
       // stays available even while a debug session rebinds plain `f6` to Pause.
-      "f6": "workspace::FocusNextPart",
+      "f6": ["task::Spawn", { "task_name": "Flutter: hot restart" }],
       "shift-f6": "workspace::FocusPreviousPart",
       "cmd-f6": "workspace::FocusNextPart",
       "fn-f": "zed::ToggleFullScreen",

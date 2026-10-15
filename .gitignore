@@ -61,3 +61,6 @@ crates/docs_preprocessor/actions.json
 
 .local*
 .cache
+
+# Prebuilt Flutter extension bundled into the app
+!/assets/bundled_extensions/**/*.wasm

@@ -1861,6 +1861,14 @@ impl RunningState {
         });
     }
 
+    pub(crate) fn hot_reload(&mut self, cx: &mut Context<Self>) {
+        self.session().update(cx, |session, cx| session.hot_reload(cx));
+    }
+
+    pub(crate) fn hot_restart(&mut self, cx: &mut Context<Self>) {
+        self.session().update(cx, |session, cx| session.hot_restart(cx));
+    }
+
     pub fn rerun_session(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if let Some((scenario, context)) = self.scenario.take().zip(self.scenario_context.take())
             && scenario.build.is_some()

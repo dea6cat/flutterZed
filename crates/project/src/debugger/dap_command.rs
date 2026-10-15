@@ -1973,3 +1973,39 @@ impl LocalDapCommand for dap::WriteMemoryArguments {
         Ok(message)
     }
 }
+
+/// Dart/Flutter debug adapter custom requests (`hotReload`, `hotRestart`).
+macro_rules! flutter_custom_request {
+    ($request:ident, $command:ident, $name:literal) => {
+        #[derive(Debug, Hash, PartialEq, Eq)]
+        pub(crate) struct $request;
+
+        impl dap::requests::Request for $request {
+            type Arguments = Value;
+            type Response = Value;
+            const COMMAND: &'static str = $name;
+        }
+
+        #[derive(Debug, Hash, PartialEq, Eq)]
+        pub(crate) struct $command;
+
+        impl LocalDapCommand for $command {
+            type Response = ();
+            type DapRequest = $request;
+
+            fn to_dap(&self) -> <Self::DapRequest as dap::requests::Request>::Arguments {
+                serde_json::json!({})
+            }
+
+            fn response_from_dap(
+                &self,
+                _message: <Self::DapRequest as dap::requests::Request>::Response,
+            ) -> Result<Self::Response> {
+                Ok(())
+            }
+        }
+    };
+}
+
+flutter_custom_request!(HotReloadRequest, HotReloadCommand, "hotReload");
+flutter_custom_request!(HotRestartRequest, HotRestartCommand, "hotRestart");

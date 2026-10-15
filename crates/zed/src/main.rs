@@ -659,6 +659,7 @@ fn main() {
         dap_adapters::init(cx);
         auto_update_ui::init(cx);
         reliability::init(client.clone(), app_state.workspace_store.clone(), cx);
+        install_bundled_extensions();
         extension_host::init(
             extension_host_proxy.clone(),
             app_state.fs.clone(),
@@ -2070,5 +2071,41 @@ fn check_for_conpty_dll() {
         }
     } else {
         log::warn!("Failed to load conpty.dll. Terminal will work with reduced functionality.");
+    }
+}
+
+/// Copies extensions embedded under `assets/bundled_extensions` into the extensions
+/// directory. Dev-linked (symlinked) extensions of the same name are left alone.
+fn install_bundled_extensions() {
+    let installed_dir = paths::extensions_dir().join("installed");
+    let mut changed = false;
+    for asset in Assets.list("bundled_extensions/").unwrap_or_default() {
+        let Some(relative) = asset.strip_prefix("bundled_extensions/") else {
+            continue;
+        };
+        let Some((name, _)) = relative.split_once('/') else {
+            continue;
+        };
+        if installed_dir.join(name).is_symlink() {
+            continue;
+        }
+        let Some(data) = Assets.load(&asset).log_err().flatten() else {
+            continue;
+        };
+        let target = installed_dir.join(relative);
+        if std::fs::read(&target).is_ok_and(|existing| existing == data.as_ref()) {
+            continue;
+        }
+        if let Some(parent) = target.parent() {
+            std::fs::create_dir_all(parent).log_err();
+        }
+        changed |= std::fs::write(&target, data.as_ref()).log_err().is_some();
+    }
+    if changed {
+        // The extension index is rebuilt when the installed directory's mtime is newer than
+        // the index; creating and removing a marker file bumps it for in-place updates.
+        let marker = installed_dir.join(".bundled_extensions_updated");
+        std::fs::write(&marker, b"").log_err();
+        std::fs::remove_file(&marker).log_err();
     }
 }
