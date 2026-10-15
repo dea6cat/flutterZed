@@ -2265,3 +2265,16 @@ mod tests {
         });
     }
 }
+
+/// Finds the `clyde` executable on `PATH` or in uv's tool directory (`~/.local/bin`).
+pub fn clyde_executable() -> Option<std::path::PathBuf> {
+    let local_bin = std::env::var_os("HOME")
+        .map(|home| std::path::PathBuf::from(home).join(".local/bin"));
+    std::env::var_os("PATH")
+        .map(|path| std::env::split_paths(&path).collect::<Vec<_>>())
+        .unwrap_or_default()
+        .into_iter()
+        .chain(local_bin)
+        .map(|directory| directory.join("clyde"))
+        .find(|candidate| candidate.is_file())
+}

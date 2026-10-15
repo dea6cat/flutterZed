@@ -14795,14 +14795,7 @@ fn default_agent(cx: &App) -> Agent {
 
 /// Whether the `clyde` executable is on `PATH` or in uv's tool directory (`~/.local/bin`).
 fn clyde_installed() -> bool {
-    let local_bin = std::env::var_os("HOME")
-        .map(|home| std::path::PathBuf::from(home).join(".local/bin"));
-    std::env::var_os("PATH")
-        .map(|path| std::env::split_paths(&path).collect::<Vec<_>>())
-        .unwrap_or_default()
-        .into_iter()
-        .chain(local_bin)
-        .any(|directory| directory.join("clyde").is_file())
+    agent_settings::clyde_executable().is_some()
 }
 
 /// Asks before running the ClydeCLI installer in a terminal.
