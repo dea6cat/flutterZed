@@ -2213,6 +2213,16 @@ impl Session {
         .detach();
     }
 
+    /// Finds the Flutter DevTools URL that `flutter run` printed to the debug console.
+    pub fn flutter_devtools_url(&self) -> Option<String> {
+        self.output.iter().rev().find_map(|event| {
+            let line = event.output.lines().find(|line| line.contains("DevTools"))?;
+            let start = line.find("http")?;
+            let url = line[start..].split_whitespace().next()?;
+            Some(url.to_string())
+        })
+    }
+
     /// Hot reloads a Flutter app through the Dart debug adapter's custom `hotReload` request.
     pub fn hot_reload(&mut self, cx: &mut Context<Self>) {
         self.request(HotReloadCommand, Self::empty_response, cx)

@@ -154,5 +154,12 @@
     "label": "Flutter: current device",
     "command": "dart \"$HOME/Library/Application Support/Zed/extensions/installed/flutter/tool/flutter_zed.dart\" status",
     "reveal": "always"
+  },
+  {
+    "label": "Flutter: open DevTools",
+    "command": "dart \"$HOME/Library/Application Support/Zed/extensions/installed/flutter/tool/flutter_zed.dart\" devtools",
+    "use_new_terminal": true,
+    "allow_concurrent_runs": false,
+    "reveal": "always"
   }
 ]

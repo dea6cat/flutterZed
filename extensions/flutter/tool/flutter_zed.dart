@@ -25,10 +25,12 @@ Future<void> main(List<String> args) async {
       _signal(ProcessSignal.sigusr1, 'Hot reload');
     case 'restart':
       _signal(ProcessSignal.sigusr2, 'Hot restart');
+    case 'devtools':
+      await _devtools(args.skip(1).join(' '));
     case 'watch':
       await _watch();
     default:
-      stderr.writeln('usage: flutter_zed.dart [sync|device|status|run [label]|reload|restart|watch]');
+      stderr.writeln('usage: flutter_zed.dart [sync|device|status|run [label]|reload|restart|devtools [vm-service-uri]|watch]');
       exit(64);
   }
 }
@@ -253,4 +255,15 @@ Future<void> _watch() async {
     }
     await Future<void>.delayed(const Duration(seconds: 2));
   }
+}
+
+/// Starts the DevTools server and opens it in the browser, optionally attached to a VM Service URI.
+Future<void> _devtools(String vmServiceUri) async {
+  final cmd = _useFvm ? ['fvm', 'dart'] : ['dart'];
+  final process = await Process.start(
+    cmd.first,
+    [...cmd.skip(1), 'devtools', if (vmServiceUri.isNotEmpty) vmServiceUri],
+    mode: ProcessStartMode.inheritStdio,
+  );
+  exit(await process.exitCode);
 }

@@ -912,6 +912,17 @@ impl DebugPanel {
                                                     ))
                                                     .tooltip(Tooltip::text("Hot Restart")),
                                             )
+                                            .child(
+                                                IconButton::new("debug-devtools", IconName::Debug)
+                                                    .icon_size(IconSize::Small)
+                                                    .on_click(window.listener_for(
+                                                        running_state,
+                                                        |this, _, window, cx| {
+                                                            this.open_devtools(window, cx);
+                                                        },
+                                                    ))
+                                                    .tooltip(Tooltip::text("Open Flutter DevTools")),
+                                            )
                                         },
                                     )
                                     .child(

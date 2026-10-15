@@ -701,6 +701,7 @@
       "ctrl-f u": ["task::Spawn", { "task_name": "Flutter: run" }],
       "ctrl-f d": ["task::Spawn", { "task_name": "Flutter: select device" }],
       "ctrl-f i": ["task::Spawn", { "task_name": "Flutter: current device" }],
+      "ctrl-f t": ["task::Spawn", { "task_name": "Flutter: open DevTools" }],
       "ctrl-f w": ["task::Spawn", { "task_name": "Flutter: watch run configs" }],
       "ctrl-f s": ["task::Spawn", { "task_name": "Flutter: sync run configs (.vscode/.run → .zed/debug.json)" }],
       "alt-/": "which_key::ShowPendingBindings",

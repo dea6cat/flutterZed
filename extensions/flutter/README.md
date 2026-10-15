@@ -1,35 +1,41 @@
-# Zed Dart
+# Flutter for Zed
 
-A [Dart](https://dart.dev/) extension for [Zed](https://zed.dev).
+Flutter and Dart support for [Zed](https://zed.dev), modelled on the VS Code Dart + Flutter extensions.
 
-## Recommended Configuration
+Based on [zed-extensions/dart](https://github.com/zed-extensions/dart) (Apache-2.0).
 
-To make the most of the Dart LSP in Zed, you can configure it to automatically organize imports and apply fixes on format.
+## Features
 
-### Settings (`settings.json`)
+- Dart grammar and language server, FVM-aware (`.fvmrc` / `.fvm/fvm_config.json` runs `fvm dart language-server`).
+- Flutter / Dart debug adapter. For Flutter, `args` go to `flutter run` (like VS Code), so `--dart-define` works.
+- Flutter snippets.
+- Tasks and `tool/flutter_zed.dart`, which:
+  - imports `.vscode/launch.json` and JetBrains `.run/*.run.xml` into `.zed/debug.json` (`Flutter: …` scenarios; other entries are kept),
+  - picks the target device,
+  - runs `flutter run`, hot reload and hot restart through a pid file,
+  - opens Flutter DevTools,
+  - watches the run configs and re-syncs on change.
 
-Add the following to your `settings.json` to enable features like organizing imports on save:
+## Tasks
 
-```json
-{
-  "languages": {
-    "Dart": {
-      "format_on_save": "on",
-      "code_actions_on_format": {
-        "source.organizeImports": true,
-        "source.fixAll": true
-      }
-    }
-  }
-}
-```
+| Task | Purpose |
+| --- | --- |
+| `Flutter: select device` | Pick a device from `flutter devices` |
+| `Flutter: sync run configs` | Rebuild `.zed/debug.json` from `.vscode` / `.run` |
+| `Flutter: run` | `flutter run` with a chosen config |
+| `Flutter: hot reload` / `hot restart` | Signal the running `flutter run` |
+| `Flutter: open DevTools` | `dart devtools` |
+| `Flutter: watch run configs` | Re-sync when configs change |
+| `Flutter: current device` | Show the selected device |
 
-## Documentation
+Suggested keybindings (Workspace context): `f5` hot reload, `f6` hot restart, `ctrl-f u` run, `ctrl-f d` select device, `ctrl-f t` DevTools, `ctrl-f w` watch, `ctrl-f s` sync.
 
-See:
-- [Zed Dart Language Docs](https://zed.dev/docs/languages/dart)
-- [Dart LSP Support Docs](https://github.com/dart-lang/sdk/blob/main/pkg/analysis_server/tool/lsp_spec/README.md)
+The tasks call the script at `~/Library/Application Support/Zed/extensions/installed/flutter/tool/flutter_zed.dart` (macOS).
 
-## Development
+## Install (dev extension)
 
-To develop this extension, see the [Developing Extensions](https://zed.dev/docs/extensions/developing-extensions) section of the Zed docs.
+Zed needs `rustup` on its `PATH` (not Homebrew's `cargo`). Launch Zed from a terminal that has it, then **Extensions → Install Dev Extension** and pick this folder. Uninstall the Dart and Flutter Snippets extensions first: they define the same language.
+
+## Debug toolbar buttons
+
+Hot Reload, Hot Restart and DevTools buttons in Zed's debug toolbar need a patched Zed: see the `feat/flutter-bundle` branch of [dea6cat/flutterZed](https://github.com/dea6cat/flutterZed).
