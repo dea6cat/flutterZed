@@ -4632,7 +4632,13 @@ impl Render for Pane {
                                     },
                                 ));
                             if has_worktrees || !self.should_display_welcome_page {
-                                placeholder
+                                placeholder.items_center().child(
+                                    gpui::div().opacity(0.2).child(
+                                        Icon::new(IconName::Flame)
+                                            .size(IconSize::Custom(ui::rems_from_px(144.0)))
+                                            .color(Color::Muted),
+                                    ),
+                                )
                             } else {
                                 if self.welcome_page.is_none() {
                                     let workspace = self.workspace.clone();
